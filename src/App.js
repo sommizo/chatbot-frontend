@@ -10,7 +10,8 @@ function App() {
 
   // Generate a unique session ID
   function generateSessionId() {
-    return 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    const prefix = process.env.REACT_APP_SESSION_PREFIX || 'session_';
+    return prefix + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
   }
 
   // Scroll to bottom when new messages are added
@@ -48,7 +49,11 @@ function App() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8080/api/chat/processQuery', {
+      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+      const chatEndpoint = process.env.REACT_APP_CHAT_ENDPOINT || '/api/chat/query';
+      const apiUrl = `${apiBaseUrl}${chatEndpoint}`;
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,7 +77,7 @@ function App() {
         timestamp: new Date().toLocaleTimeString(),
         cypherQuery: data.cypherQuery,
         executionTime: data.executionTime,
-        dataCount: data.dataCount
+        dataCount: data.data ? data.data.length : 0
       };
 
       setMessages(prev => [...prev, botMessage]);
@@ -101,7 +106,7 @@ function App() {
     <div className="App">
       <div className="chat-container">
         <div className="chat-header">
-          <h1>Chatbot Assistant</h1>
+          <h1>{process.env.REACT_APP_NAME || 'Chatbot Assistant'}</h1>
           <div className="session-info">Session: {sessionId}</div>
         </div>
         
