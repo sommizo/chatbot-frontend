@@ -30,7 +30,10 @@ function App() {
       id: 1,
       text: "Bonjour! Je suis votre assistant chatbot. Comment puis-je vous aider aujourd'hui?",
       sender: 'bot',
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString('fr-FR', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+      })
     }]);
   }, []);
 
@@ -42,7 +45,10 @@ function App() {
       id: Date.now(),
       text: inputMessage,
       sender: 'user',
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString('fr-FR', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+      })
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -75,7 +81,10 @@ function App() {
         id: Date.now() + 1,
         text: data.success ? data.response : data.error || 'Désolé, une erreur est survenue.',
         sender: 'bot',
-        timestamp: new Date().toLocaleTimeString(),
+        timestamp: new Date().toLocaleTimeString('fr-FR', { 
+          hour: '2-digit', 
+          minute: '2-digit'
+        }),
         cypherQuery: data.cypherQuery,
         executionTime: data.executionTime,
         dataCount: data.data ? data.data.length : 0
@@ -88,7 +97,10 @@ function App() {
         id: Date.now() + 1,
         text: 'Désolé, je ne peux pas me connecter au serveur en ce moment. Veuillez réessayer plus tard.',
         sender: 'bot',
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString('fr-FR', { 
+          hour: '2-digit', 
+          minute: '2-digit'
+        })
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
