@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
+import { ChatHeader, MessageList, MessageInput } from './components';
 
 function App() {
   const [messages, setMessages] = useState([]);
@@ -95,68 +96,27 @@ function App() {
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
 
   return (
     <div className="App">
       <div className="chat-container">
-        <div className="chat-header">
-          <h1>{process.env.REACT_APP_NAME || 'Chatbot Assistant'}</h1>
-          <div className="session-info">Session: {sessionId}</div>
-        </div>
+        <ChatHeader 
+          title={process.env.REACT_APP_NAME || 'Chatbot Assistant'}
+          sessionId={sessionId}
+        />
         
-        <div className="messages-container">
-          {messages.map((message) => (
-            <div key={message.id} className={`message ${message.sender}`}>
-              <div className="message-content">
-                <div className="message-text">{message.text}</div>
-                <div className="message-timestamp">{message.timestamp}</div>
-                {message.cypherQuery && (
-                  <div className="message-details">
-                    <small>Requête Cypher: {message.cypherQuery}</small>
-                    {message.executionTime && <small> | Temps: {message.executionTime}ms</small>}
-                    {message.dataCount !== undefined && <small> | Résultats: {message.dataCount}</small>}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="message bot">
-              <div className="message-content">
-                <div className="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+        <MessageList 
+          messages={messages}
+          isLoading={isLoading}
+          messagesEndRef={messagesEndRef}
+        />
 
-        <div className="input-container">
-          <textarea
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Tapez votre message ici..."
-            disabled={isLoading}
-            rows="2"
-          />
-          <button 
-            onClick={sendMessage} 
-            disabled={isLoading || !inputMessage.trim()}
-            className="send-button"
-          >
-            {isLoading ? 'Envoi...' : 'Envoyer'}
-          </button>
-        </div>
+        <MessageInput 
+          inputMessage={inputMessage}
+          setInputMessage={setInputMessage}
+          onSendMessage={sendMessage}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );
