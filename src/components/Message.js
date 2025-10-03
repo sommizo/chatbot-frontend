@@ -8,7 +8,7 @@ const Message = ({ message }) => {
         <div className="message-timestamp">{message.timestamp}</div>
         {message.cypherQuery && (
           <div className="message-details">
-            <small>Requête Cypher: {message.cypherQuery}</small>
+            <small>{message.cypherQuery}</small>
             {message.executionTime && <small> | Temps: {message.executionTime}ms</small>}
             {message.dataCount !== undefined && <small> | Résultats: {message.dataCount}</small>}
           </div>

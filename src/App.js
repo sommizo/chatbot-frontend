@@ -66,7 +66,7 @@ function App() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          question: inputMessage,
+          userMessage: inputMessage,
           sessionId: sessionId
         })
       });
