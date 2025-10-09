@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { ChatHeader, MessageList, MessageInput } from './components';
+import Login from './components/Login';
+import authService from './services/authService';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -10,34 +14,17 @@ function App() {
   const messagesEndRef = useRef(null);
   
   // Single conversation state
-  const [userId] = useState(() => generateUserId());
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Check authentication on app load
+  useEffect(() => {
+    checkAuthentication();
+  }, []);
 
   // Generate a unique session ID
   function generateSessionId() {
     const prefix = process.env.REACT_APP_SESSION_PREFIX || 'session_';
     return prefix + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-  }
-
-  // Generate a unique user ID and store it in sessionStorage
-  function generateUserId() {
-    // Check if userId already exists in sessionStorage
-    const existingUserId = sessionStorage.getItem('userId');
-    if (existingUserId) {
-      return existingUserId;
-    }
-    
-    // Generate a new UUID-like userId as specified in the requirement
-    const newUserId = generateUUID();
-    
-    // Store it in sessionStorage for future use
-    sessionStorage.setItem('userId', newUserId);
-    return newUserId;
-  }
-
-  // Generate a UUID v4
-  function generateUUID() {
-      return 'putIdHere';
   }
 
   // Scroll to bottom when new messages are added
@@ -50,10 +37,14 @@ function App() {
     try {
       setLoadingHistory(true);
       const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+      const token = authService.getToken();
+      const userId = authService.getUserId();
+      console.log('[DEBUG_LOG] Loading conversation history - userId:', userId);
       const response = await fetch(`${apiBaseUrl}/api/chat/history/${userId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -79,7 +70,7 @@ function App() {
       // Add welcome message to the loaded conversation history
       const welcomeMessage = {
         id: 'welcome-' + Date.now(),
-        text: "Bonjour! Je suis votre assistant chatbot. Comment puis-je vous aider aujourd'hui?",
+        text: `Bonjour! Je suis votre assistant chatbot. Comment puis-je vous aider aujourd'hui?`,
         sender: 'bot',
         timestamp: new Date().toLocaleTimeString('fr-FR', { 
           hour: '2-digit', 
@@ -93,7 +84,7 @@ function App() {
       // If no history exists, show welcome message
       setMessages([{
         id: 1,
-        text: "Bonjour! Je suis votre assistant chatbot. Comment puis-je vous aider aujourd'hui?",
+        text: `Bonjour ${authService.getUsername()}! Je suis votre assistant chatbot. Comment puis-je vous aider aujourd'hui?`,
         sender: 'bot',
         timestamp: new Date().toLocaleTimeString('fr-FR', { 
           hour: '2-digit', 
@@ -105,14 +96,34 @@ function App() {
     }
   };
 
+  const checkAuthentication = async () => {
+    if (authService.isAuthenticated()) {
+      const isValid = await authService.validateToken();
+      if (isValid) {
+        setIsAuthenticated(true);
+        loadConversationHistory();
+      } else {
+        authService.logout();
+        setIsAuthenticated(false);
+      }
+    }
+    setIsCheckingAuth(false);
+  };
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+    loadConversationHistory();
+  };
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setMessages([]);
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Load conversation history on component mount
-  useEffect(() => {
-    loadConversationHistory();
-  }, [userId]);
 
   // Send message to backend
   const sendMessage = async () => {
@@ -137,10 +148,14 @@ function App() {
       const chatEndpoint = process.env.REACT_APP_CHAT_ENDPOINT || '/api/chat/query';
       const apiUrl = `${apiBaseUrl}${chatEndpoint}`;
       
+      const token = authService.getToken();
+      const userId = authService.getUserId();
+      console.log('[DEBUG_LOG] Sending message - userId:', userId);
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           userMessage: inputMessage,
@@ -150,6 +165,11 @@ function App() {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          authService.logout();
+          setIsAuthenticated(false);
+          return;
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -187,11 +207,29 @@ function App() {
   };
 
 
+  // Show loading screen while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Vérification de l'authentification...</p>
+      </div>
+    );
+  }
+
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Show main chat interface if authenticated
   return (
     <div className="App">
       <div className="chat-container">
         <ChatHeader 
           title={process.env.REACT_APP_NAME || 'Chatbot Assistant'}
+          onLogout={handleLogout} 
+          username={authService.getUsername()}
         />
         
         {loadingHistory ? (
