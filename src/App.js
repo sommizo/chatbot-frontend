@@ -12,6 +12,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(() => generateSessionId());
   const messagesEndRef = useRef(null);
+  // Prevent multiple history loads (e.g., React StrictMode double-invoke)
+  const hasLoadedHistoryRef = useRef(false);
   
   // Single conversation state
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -34,6 +36,12 @@ function App() {
 
   // Load user's conversation history
   const loadConversationHistory = async () => {
+    // Prevent duplicate loads (e.g., StrictMode double-invoke or multiple triggers)
+    if (hasLoadedHistoryRef.current || loadingHistory) {
+      console.debug('[DEBUG_LOG] Skipping loadConversationHistory: already loaded or in progress');
+      return;
+    }
+    hasLoadedHistoryRef.current = true;
     try {
       setLoadingHistory(true);
       const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
@@ -56,8 +64,13 @@ function App() {
       
       const formattedMessages = history.map(msg => ({
         id: msg.id,
-        text: msg.content,
-        sender: msg.type.toLowerCase(),
+        // Preserve raw content and metadata for conditional rendering (e.g., charts)
+        content: msg.content,
+        metadata: msg.metadata,
+        type: msg.type,
+        // Maintain existing fields for text rendering
+        text: typeof msg.content === 'string' ? msg.content : '',
+        sender: (msg.type || 'BOT').toLowerCase(),
         timestamp: new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
           hour: '2-digit', 
           minute: '2-digit'
@@ -119,6 +132,11 @@ function App() {
     authService.logout();
     setIsAuthenticated(false);
     setMessages([]);
+    // Reset history loaded flag so next login can load history again
+    if (hasLoadedHistoryRef) {
+      hasLoadedHistoryRef.current = false;
+      console.debug('[DEBUG_LOG] Reset hasLoadedHistoryRef on logout');
+    }
   };
 
   useEffect(() => {
@@ -175,20 +193,40 @@ function App() {
 
       const data = await response.json();
       
-      const botMessage = {
-        id: Date.now() + 1,
-        text: data.success ? data.response : data.error || 'Désolé, une erreur est survenue.',
-        sender: 'bot',
-        timestamp: new Date().toLocaleTimeString('fr-FR', { 
-          hour: '2-digit', 
-          minute: '2-digit'
-        }),
-        cypherQuery: data.cypherQuery,
-        executionTime: data.executionTime,
-        dataCount: data.data ? data.data.length : 0
-      };
-
-      setMessages(prev => [...prev, botMessage]);
+      // If backend returns a full ConversationMessage, map it directly
+      if (data && data.message) {
+        const m = data.message;
+        const isStringContent = typeof m.content === 'string';
+        const botMessage = {
+          id: m.id || Date.now() + 1,
+          content: m.content,
+          metadata: m.metadata,
+          type: (m.type || 'BOT').toUpperCase(),
+          text: isStringContent ? m.content : (data.response || ''),
+          sender: (m.type || 'BOT').toLowerCase(),
+          timestamp: m.timestamp ? new Date(m.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          // Keep optional details if present on the envelope
+          cypherQuery: data.cypherQuery || m?.metadata?.cypherQuery,
+          executionTime: data.executionTime,
+          dataCount: typeof data.dataCount === 'number' ? data.dataCount : m?.metadata?.dataCount
+        };
+        setMessages(prev => [...prev, botMessage]);
+      } else {
+        // Legacy text-only path
+        const botMessage = {
+          id: Date.now() + 1,
+          text: data.success ? data.response : data.error || 'Désolé, une erreur est survenue.',
+          sender: 'bot',
+          timestamp: new Date().toLocaleTimeString('fr-FR', { 
+            hour: '2-digit', 
+            minute: '2-digit'
+          }),
+          cypherQuery: data.cypherQuery,
+          executionTime: data.executionTime,
+          dataCount: data.data ? data.data.length : 0
+        };
+        setMessages(prev => [...prev, botMessage]);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage = {
