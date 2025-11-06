@@ -5,6 +5,7 @@ const Message = ({ message }) => {
   const type = (message.type || (message.sender === 'user' ? 'USER' : 'BOT')).toUpperCase();
   const isChart = message?.metadata?.render === 'chart' && message?.content;
   const senderClass = message.sender || (type === 'USER' ? 'user' : 'bot');
+  const globalDist = message?.globalDistribution || message?.content?.globalDistribution;
 
   return (
     <div className={`message ${senderClass}`}>
@@ -29,6 +30,11 @@ const Message = ({ message }) => {
               </div>
             )}
           </>
+        )}
+        {globalDist && (
+          <div className="message-chart">
+            <StatsChart data={{ globalDistribution: globalDist }} chartType="pie" />
+          </div>
         )}
       </div>
     </div>
