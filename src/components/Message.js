@@ -13,23 +13,31 @@ const Message = ({ message }) => {
       <div className="message-content">
         {visualItems.length > 0 ? (
           <>
-            {visualItems.map((item, idx) => (
-              <div className="message-chart" key={`visual-${idx}`}>
-                {item.title && (
-                  <div className="message-title"><strong>{item.title}</strong></div>
-                )}
-                {(item.render === 'chart' || item.render === 'chart_pct') && (
-                  <StatsChart
-                    data={item.data || item.content || {}}
-                    chartType={item.chartType || 'bar'}
-                    usePercent={item.render === 'chart_pct'}
-                  />
-                )}
-                {item.render === 'table' && (
-                  <StatsTable data={item.data || item.content || {}} chartType={item.chartType} />
-                )}
-              </div>
-            ))}
+            {visualItems.map((item, idx) => {
+              const chartTypeStr = String(item.chartType || '').toLowerCase();
+              const isTableType = chartTypeStr === 'table';
+              return (
+                <div className="message-chart" key={`visual-${idx}`}>
+                  {item.title && (
+                    <div className="message-title"><strong>{item.title}</strong></div>
+                  )}
+                  {(item.render === 'chart' || item.render === 'chart_pct') && !isTableType && (
+                    <StatsChart
+                      data={item.data || item.content || {}}
+                      chartType={item.chartType || 'bar'}
+                      usePercent={item.render === 'chart_pct'}
+                    />
+                  )}
+                  {(item.render === 'table' || isTableType) && (
+                    <StatsTable
+                      data={item.data || item.content || {}}
+                      chartType={item.chartType}
+                      usePercent={item.render === 'chart_pct'}
+                    />
+                  )}
+                </div>
+              );
+            })}
             <div className="message-timestamp">{message.timestamp}</div>
             {message.cypherQuery && (
               <div className="message-details">

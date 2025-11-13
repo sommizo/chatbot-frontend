@@ -7,7 +7,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, Resp
  * - data: object that can be one of:
  *   1) monthly table: { '04-2025': { developer: 1, test: 0, ... }, '05-2025': { ... } }
  *   2) flat map: { developer: 6, test: 1, ... , total?: 9, developer_pct?: '66,67%' }
- *   3) { globalDistribution: { ...flat map... } }
  * - chartType: 'bar' | 'pie'
  */
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#8dd1e1'];
@@ -33,19 +32,19 @@ function StatsChart({ data, chartType = 'bar', usePercent = false }) {
   }
 
   // Unwrap possible shapes
-  const hasGD = isPlainObject(data.globalDistribution);
-  const gdSource = hasGD ? data.globalDistribution : data;
+  const gdSource =  data;
 
   // Build a filtered flat map candidate
   let flatMap = null;
   if (usePercent) {
-    const pctEntries = Object.entries(gdSource || {}).filter(([k]) => isPctKey(k));
+    const pctEntries = Object.entries(gdSource || {})
+      .filter(([k]) => isPctKey(k) && stripPctSuffix(k) !== 'total');
     if (pctEntries.length > 0) {
       flatMap = Object.fromEntries(pctEntries.map(([k, v]) => [stripPctSuffix(k), toNumber(v)]));
     }
   } else {
     const flatEntries = Object.entries(gdSource || {})
-      .filter(([k]) => k !== 'globalDistribution' && !isPctKey(k) && k !== 'total');
+      .filter(([k]) => !isPctKey(k)); // keep 'total' for non-percent
     if (flatEntries.length > 0) {
       flatMap = Object.fromEntries(flatEntries);
     }
@@ -53,7 +52,7 @@ function StatsChart({ data, chartType = 'bar', usePercent = false }) {
 
   // Monthly table can be given under data.dataTable or directly on root
   const tableSrc = isPlainObject(data.dataTable) ? data.dataTable : data;
-  const tableEntries = Object.entries(tableSrc || {}).filter(([k]) => k !== 'globalDistribution');
+  const tableEntries = Object.entries(tableSrc || {});
   const looksMonthly = tableEntries.length > 0 && tableEntries.every(([, v]) => isPlainObject(v));
 
   // Prepare monthly rows and categories if monthly table detected
@@ -62,13 +61,14 @@ function StatsChart({ data, chartType = 'bar', usePercent = false }) {
   if (looksMonthly) {
     monthlyRows = tableEntries.map(([month, values]) => {
       const pairs = Object.entries(values || {})
-        .filter(([key]) => key !== 'total')
         .map(([key, val]) => {
           if (usePercent) {
-            if (isPctKey(key)) return [stripPctSuffix(key), toNumber(val)];
+            if (isPctKey(key) && stripPctSuffix(key) !== 'total') {
+              return [stripPctSuffix(key), toNumber(val)];
+            }
             return null;
           }
-          if (!isPctKey(key)) return [key, toNumber(val)];
+          if (!isPctKey(key)) return [key, toNumber(val)]; // include 'total' in non-percent
           return null;
         })
         .filter(Boolean);
@@ -90,9 +90,9 @@ function StatsChart({ data, chartType = 'bar', usePercent = false }) {
 
   // PIE CHART
   if (chartType === 'pie') {
-    // If usePercent, build from percent flat map; otherwise prefer globalDistribution
-    const source = usePercent ? (flatMap || {}) : (hasGD ? data.globalDistribution : (flatMap || {}));
-    const pieKeys = Object.keys(source || {}).filter((k) => !isPctKey(k) && k !== 'total');
+    // If usePercent, build from percent flat map;
+    const source = (flatMap || {});
+    const pieKeys = Object.keys(source || {});
     if (pieKeys.length === 0) {
       return <div>Aucune donnée à afficher</div>;
     }
@@ -133,7 +133,6 @@ function StatsChart({ data, chartType = 'bar', usePercent = false }) {
   // Flat map as single-series bar chart
   if (flatMap) {
     const rows = Object.entries(flatMap)
-      .filter(([k]) => !isPctKey(k) && k !== 'total')
       .map(([name, value]) => ({ name, value: toNumber(value) }));
 
     if (rows.length === 0) {
