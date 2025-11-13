@@ -6,7 +6,7 @@ const Message = ({ message }) => {
   const type = (message.type || (message.sender === 'user' ? 'USER' : 'BOT')).toUpperCase();
   const senderClass = message.sender || (type === 'USER' ? 'user' : 'bot');
   const contentIsArray = Array.isArray(message?.content);
-  const visualItems = contentIsArray ? (message.content || []).filter((it) => it && (it.render === 'chart' || it.render === 'table')) : [];
+  const visualItems = contentIsArray ? (message.content || []).filter((it) => it && (it.render === 'chart' || it.render === 'chart_pct' || it.render === 'table')) : [];
 
   return (
     <div className={`message ${senderClass}`}>
@@ -18,8 +18,12 @@ const Message = ({ message }) => {
                 {item.title && (
                   <div className="message-title"><strong>{item.title}</strong></div>
                 )}
-                {item.render === 'chart' && (
-                  <StatsChart data={item.data || item.content || {}} chartType={item.chartType || 'bar'} />
+                {(item.render === 'chart' || item.render === 'chart_pct') && (
+                  <StatsChart
+                    data={item.data || item.content || {}}
+                    chartType={item.chartType || 'bar'}
+                    usePercent={item.render === 'chart_pct'}
+                  />
                 )}
                 {item.render === 'table' && (
                   <StatsTable data={item.data || item.content || {}} chartType={item.chartType} />

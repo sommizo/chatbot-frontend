@@ -14,6 +14,7 @@ const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#8dd1e1'];
 
 // helper: exclude keys that end with _pct
 const isPctKey = (k) => typeof k === 'string' && k.endsWith('_pct');
+const stripPctSuffix = (k) => (typeof k === 'string' && k.endsWith('_pct') ? k.slice(0, -4) : k);
 const isPlainObject = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const toNumber = (v) => {
   if (typeof v === 'number') return v;
@@ -26,7 +27,7 @@ const toNumber = (v) => {
   return 0;
 };
 
-function StatsChart({ data, chartType = 'bar' }) {
+function StatsChart({ data, chartType = 'bar', usePercent = false }) {
   if (!data || typeof data !== 'object') {
     return <div>Aucune donnée à afficher</div>;
   }
@@ -35,11 +36,20 @@ function StatsChart({ data, chartType = 'bar' }) {
   const hasGD = isPlainObject(data.globalDistribution);
   const gdSource = hasGD ? data.globalDistribution : data;
 
-  // Build a filtered flat map candidate (ignore *_pct, total, and reserved keys)
-  const flatCandidates = Object.entries(gdSource || {})
-    .filter(([k]) => k !== 'globalDistribution' && !isPctKey(k) && k !== 'total');
-  const isFlatMap = flatCandidates.length > 0 && flatCandidates.every(([, v]) => typeof v === 'number' || (typeof v === 'string' && v.trim() !== ''));
-  const flatMap = isFlatMap ? Object.fromEntries(flatCandidates) : null;
+  // Build a filtered flat map candidate
+  let flatMap = null;
+  if (usePercent) {
+    const pctEntries = Object.entries(gdSource || {}).filter(([k]) => isPctKey(k));
+    if (pctEntries.length > 0) {
+      flatMap = Object.fromEntries(pctEntries.map(([k, v]) => [stripPctSuffix(k), toNumber(v)]));
+    }
+  } else {
+    const flatEntries = Object.entries(gdSource || {})
+      .filter(([k]) => k !== 'globalDistribution' && !isPctKey(k) && k !== 'total');
+    if (flatEntries.length > 0) {
+      flatMap = Object.fromEntries(flatEntries);
+    }
+  }
 
   // Monthly table can be given under data.dataTable or directly on root
   const tableSrc = isPlainObject(data.dataTable) ? data.dataTable : data;
@@ -51,12 +61,18 @@ function StatsChart({ data, chartType = 'bar' }) {
   let monthlyCategories = [];
   if (looksMonthly) {
     monthlyRows = tableEntries.map(([month, values]) => {
-      const filtered = Object.entries(values || {})
-        .filter(([key]) => !isPctKey(key) && key !== 'total')
-        .reduce((acc, [key, val]) => {
-          acc[key] = toNumber(val);
-          return acc;
-        }, {});
+      const pairs = Object.entries(values || {})
+        .filter(([key]) => key !== 'total')
+        .map(([key, val]) => {
+          if (usePercent) {
+            if (isPctKey(key)) return [stripPctSuffix(key), toNumber(val)];
+            return null;
+          }
+          if (!isPctKey(key)) return [key, toNumber(val)];
+          return null;
+        })
+        .filter(Boolean);
+      const filtered = Object.fromEntries(pairs);
       return { month, ...filtered };
     });
 
@@ -69,10 +85,13 @@ function StatsChart({ data, chartType = 'bar' }) {
     monthlyCategories = Array.from(categorySet);
   }
 
+  const yAxisProps = usePercent ? { domain: [0, 100], tickFormatter: (v) => `${v}%` } : {};
+  const tooltipFormatter = usePercent ? (value) => `${value}%` : undefined;
+
   // PIE CHART
   if (chartType === 'pie') {
-    // Prefer globalDistribution if provided; otherwise, use flat map
-    const source = hasGD ? data.globalDistribution : (flatMap || {});
+    // If usePercent, build from percent flat map; otherwise prefer globalDistribution
+    const source = usePercent ? (flatMap || {}) : (hasGD ? data.globalDistribution : (flatMap || {}));
     const pieKeys = Object.keys(source || {}).filter((k) => !isPctKey(k) && k !== 'total');
     if (pieKeys.length === 0) {
       return <div>Aucune donnée à afficher</div>;
@@ -82,7 +101,7 @@ function StatsChart({ data, chartType = 'bar' }) {
     return (
       <ResponsiveContainer width="100%" height={320}>
         <PieChart>
-          <Tooltip />
+          <Tooltip formatter={tooltipFormatter} />
           <Legend />
           <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100}>
             {pieData.map((entry, idx) => (
@@ -100,8 +119,8 @@ function StatsChart({ data, chartType = 'bar' }) {
       <ResponsiveContainer width="100%" height={340}>
         <BarChart data={monthlyRows}>
           <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip />
+          <YAxis {...yAxisProps} />
+          <Tooltip formatter={tooltipFormatter} />
           <Legend />
           {monthlyCategories.map((key, idx) => (
             <Bar key={key} dataKey={key} fill={COLORS[idx % COLORS.length]} />
@@ -125,8 +144,8 @@ function StatsChart({ data, chartType = 'bar' }) {
       <ResponsiveContainer width="100%" height={340}>
         <BarChart data={rows}>
           <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip />
+          <YAxis {...yAxisProps} />
+          <Tooltip formatter={tooltipFormatter} />
           <Legend />
           <Bar dataKey="value" fill={COLORS[0]} />
         </BarChart>
