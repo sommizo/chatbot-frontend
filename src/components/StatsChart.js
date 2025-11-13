@@ -26,6 +26,29 @@ const toNumber = (v) => {
   return 0;
 };
 
+// French number formatter for labels
+const FR_NUMBER = typeof Intl !== 'undefined'
+  ? new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 })
+  : { format: (n) => String(Math.round((n + Number.EPSILON) * 100) / 100) };
+
+// Custom label renderer for Pie slices (outside labels)
+const RADIAN = Math.PI / 180;
+const makePieLabelRenderer = (usePercent) => ({ cx, cy, midAngle, outerRadius, name, value, index }) => {
+  if (value == null || value === 0) return null;
+  const radius = outerRadius + 16;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const textAnchor = x > cx ? 'start' : 'end';
+  const valText = usePercent ? `${FR_NUMBER.format(value)}%` : FR_NUMBER.format(value);
+  const sliceColor = COLORS[index % COLORS.length];
+  const textColor = usePercent ? sliceColor : '#374151';
+  return (
+    <text x={x} y={y} fill={textColor} textAnchor={textAnchor} dominantBaseline="central" fontSize={12}>
+      {`${name}: ${valText}`}
+    </text>
+  );
+};
+
 function StatsChart({ data, chartType = 'bar', usePercent = false }) {
   if (!data || typeof data !== 'object') {
     return <div>Aucune donnée à afficher</div>;
@@ -103,7 +126,16 @@ function StatsChart({ data, chartType = 'bar', usePercent = false }) {
         <PieChart>
           <Tooltip formatter={tooltipFormatter} />
           <Legend />
-          <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100}>
+          <Pie
+            data={pieData}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={100}
+            label={makePieLabelRenderer(usePercent)}
+            labelLine
+          >
             {pieData.map((entry, idx) => (
               <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
             ))}
