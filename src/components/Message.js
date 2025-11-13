@@ -1,23 +1,29 @@
 import React from 'react';
 import StatsChart from './StatsChart';
+import StatsTable from './StatsTable';
 
 const Message = ({ message }) => {
   const type = (message.type || (message.sender === 'user' ? 'USER' : 'BOT')).toUpperCase();
   const senderClass = message.sender || (type === 'USER' ? 'user' : 'bot');
   const contentIsArray = Array.isArray(message?.content);
-  const chartItems = contentIsArray ? (message.content || []).filter((it) => it && it.render === 'chart') : [];
+  const visualItems = contentIsArray ? (message.content || []).filter((it) => it && (it.render === 'chart' || it.render === 'table')) : [];
 
   return (
     <div className={`message ${senderClass}`}>
       <div className="message-content">
-        {chartItems.length > 0 ? (
+        {visualItems.length > 0 ? (
           <>
-            {chartItems.map((item, idx) => (
-              <div className="message-chart" key={`chart-${idx}`}>
+            {visualItems.map((item, idx) => (
+              <div className="message-chart" key={`visual-${idx}`}>
                 {item.title && (
                   <div className="message-title"><strong>{item.title}</strong></div>
                 )}
-                <StatsChart data={item.data || item.content || {}} chartType={item.chartType || 'bar'} />
+                {item.render === 'chart' && (
+                  <StatsChart data={item.data || item.content || {}} chartType={item.chartType || 'bar'} />
+                )}
+                {item.render === 'table' && (
+                  <StatsTable data={item.data || item.content || {}} chartType={item.chartType} />
+                )}
               </div>
             ))}
             <div className="message-timestamp">{message.timestamp}</div>
