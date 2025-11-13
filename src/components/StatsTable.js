@@ -100,9 +100,9 @@ export default function StatsTable({ data, usePercent = false /*, chartType */ }
         <tbody>
           {categories.map((cat) => (
             <tr key={cat}>
-              <td>{cat}</td>
+              <td className="row-header">{cat}</td>
               {months.map((m) => (
-                <td key={`${m}-${cat}`}>
+                <td className="matrix-value" key={`${m}-${cat}`}>
                   {toNumber(usePercent ? (data[m]?.[`${cat}_pct`] ?? '') : (data[m]?.[cat] ?? ''))}
                 </td>
               ))}

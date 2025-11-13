@@ -113,9 +113,9 @@ function StatsChart({ data, chartType = 'bar', usePercent = false }) {
 
   // PIE CHART
   if (chartType === 'pie') {
-    // If usePercent, build from percent flat map;
+    // Build from flat map but always exclude 'total' slice regardless of percent mode
     const source = (flatMap || {});
-    const pieKeys = Object.keys(source || {});
+    const pieKeys = Object.keys(source || {}).filter((k) => k !== 'total');
     if (pieKeys.length === 0) {
       return <div>Aucune donnée à afficher</div>;
     }

@@ -5,3 +5,4 @@ export { default as MessageInput } from './MessageInput';
 export { default as TypingIndicator } from './TypingIndicator';
 export { default as StatsChart } from './StatsChart';
 export { default as StatsTable } from './StatsTable';
+export { default as StatsText } from './StatsText';

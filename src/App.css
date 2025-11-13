@@ -291,6 +291,43 @@
   margin: 10px 0;
 }
 
+/* Add separator and spacing between consecutive visual blocks */
+.message-chart + .message-chart {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e9edf3;
+}
+
+/* Controls toolbar for each chart/table/text block */
+.chart-controls {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 8px 0;
+}
+
+.chart-btn {
+  border: 1px solid #e1e5e9;
+  background: #fff;
+  color: #4b5563;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+.chart-btn:hover {
+  background: #f7f9ff;
+}
+.chart-btn.active {
+  background: linear-gradient(135deg, #667eea0f 0%, #764ba20f 100%);
+  border-color: #c7d2fe;
+  color: #374151;
+}
+.chart-btn.toggle.active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
 /* Container gives border, radius, and horizontal scroll if needed */
 .stats-table-container {
   margin-top: 8px;
@@ -366,4 +403,29 @@
 /* Title spacing inside chart blocks */
 .message-title {
   margin-bottom: 6px;
+}
+
+/* Text view styling */
+.stats-text pre {
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #374151;
+  white-space: pre-wrap;
+}
+
+
+/* Center matrix values inside stats tables without affecting headers */
+.stats-table td.matrix-value {
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Ensure the first column (row header) stays left-aligned */
+.stats-table td.row-header {
+  text-align: left;
+  white-space: nowrap;
 }
