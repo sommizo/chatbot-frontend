@@ -3,6 +3,80 @@ import StatsChart from './StatsChart';
 import StatsTable from './StatsTable';
 import StatsText from './StatsText';
 
+// Formatters FR pour date et heure complètes
+const FR_DATE = typeof Intl !== 'undefined'
+  ? new Intl.DateTimeFormat('fr-FR', { weekday: 'short', year: 'numeric', month: 'short', day: '2-digit' })
+  : { format: (d) => d.toLocaleDateString() };
+
+const FR_TIME = typeof Intl !== 'undefined'
+  ? new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  : { format: (d) => `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}` };
+
+// Parsing robuste de différents formats de timestamp
+const parseTimestamp = (ts) => {
+  if (ts === null || ts === undefined) return null;
+  try {
+    if (ts instanceof Date) {
+      const d = new Date(ts.getTime());
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof ts === 'number') {
+      const ms = ts < 1e11 ? ts * 1000 : ts; // secondes ou millisecondes
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof ts === 'string') {
+      const s = ts.trim();
+      if (!s) return null;
+      // chaîne numérique (epoch)
+      if (/^\d{10,}$/.test(s)) {
+        const num = parseInt(s, 10);
+        const ms = num < 1e11 ? num * 1000 : num;
+        const d = new Date(ms);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      // ISO ou formats reconnus par Date.parse
+      const parsed = Date.parse(s);
+      if (!Number.isNaN(parsed)) {
+        const d = new Date(parsed);
+        return isNaN(d.getTime()) ? null : d;
+      }
+      // Format FR: DD/MM/YYYY HH:mm[:ss] (ou juste date)
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+      if (m) {
+        const [, dd, mm, yyyy, HH = '0', MM = '0', SS = '0'] = m;
+        const d = new Date(
+          Number(yyyy),
+          Number(mm) - 1,
+          Number(dd),
+          Number(HH),
+          Number(MM),
+          Number(SS)
+        );
+        return isNaN(d.getTime()) ? null : d;
+      }
+    }
+  } catch (_) {
+    // ignore et fallback
+  }
+  return null;
+};
+
+// Formattage: aujourd'hui => HH:mm ; sinon => "DATE à HEURE" (sans secondes). Fallback: chaîne brute.
+const isToday = (d) => {
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+};
+
+const formatTimestamp = (ts) => {
+  const d = parseTimestamp(ts);
+  if (!d) return ts ? String(ts) : '';
+  if (isToday(d)) {
+    return `${FR_TIME.format(d)}`; // HH:mm
+  }
+  return `${FR_DATE.format(d)} à ${FR_TIME.format(d)}`;
+};
+
 const Message = ({ message }) => {
   const type = (message.type || (message.sender === 'user' ? 'USER' : 'BOT')).toUpperCase();
   const senderClass = message.sender || (type === 'USER' ? 'user' : 'bot');
@@ -155,7 +229,7 @@ const Message = ({ message }) => {
                 </div>
               );
             })}
-            <div className="message-timestamp">{message.timestamp}</div>
+            <div className="message-timestamp">{formatTimestamp(message.timestamp)}</div>
             {message.cypherQuery && (
               <div className="message-details">
                 <small>{message.cypherQuery}</small>
@@ -167,7 +241,7 @@ const Message = ({ message }) => {
         ) : (
           <>
             <div className="message-text">{message.text || String(message.content || '')}</div>
-            <div className="message-timestamp">{message.timestamp}</div>
+            <div className="message-timestamp">{formatTimestamp(message.timestamp)}</div>
             {message.cypherQuery && (
               <div className="message-details">
                 <small>{message.cypherQuery}</small>

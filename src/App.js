@@ -71,10 +71,7 @@ function App() {
         // Maintain existing fields for text rendering
         text: typeof msg.content === 'string' ? msg.content : '',
         sender: (msg.type || 'BOT').toLowerCase(),
-        timestamp: new Date(msg.timestamp).toLocaleTimeString('fr-FR', { 
-          hour: '2-digit', 
-          minute: '2-digit'
-        }),
+        timestamp: msg.timestamp,
         cypherQuery: msg.metadata?.cypherQuery,
         executionTime: msg.metadata?.executionTime,
         dataCount: msg.metadata?.dataCount
@@ -85,10 +82,7 @@ function App() {
         id: 'welcome-' + Date.now(),
         text: `Bonjour! Je suis votre assistant chatbot. Comment puis-je vous aider aujourd'hui?`,
         sender: 'bot',
-        timestamp: new Date().toLocaleTimeString('fr-FR', { 
-          hour: '2-digit', 
-          minute: '2-digit'
-        })
+        timestamp: new Date().toISOString()
       };
       
       setMessages([...formattedMessages, welcomeMessage]);
@@ -99,10 +93,7 @@ function App() {
         id: 1,
         text: `Bonjour ${authService.getUsername()}! Je suis votre assistant chatbot. Comment puis-je vous aider aujourd'hui?`,
         sender: 'bot',
-        timestamp: new Date().toLocaleTimeString('fr-FR', { 
-          hour: '2-digit', 
-          minute: '2-digit'
-        })
+        timestamp: new Date().toISOString()
       }]);
     } finally {
       setLoadingHistory(false);
@@ -151,10 +142,7 @@ function App() {
       id: Date.now(),
       text: inputMessage,
       sender: 'user',
-      timestamp: new Date().toLocaleTimeString('fr-FR', { 
-        hour: '2-digit', 
-        minute: '2-digit'
-      })
+      timestamp: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -204,26 +192,11 @@ function App() {
           type: (m.type || 'BOT').toUpperCase(),
           text: isStringContent ? m.content : (data.response || ''),
           sender: (m.type || 'BOT').toLowerCase(),
-          timestamp: m.timestamp ? new Date(m.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          timestamp: m.timestamp || new Date().toISOString(),
           // Keep optional details if present on the envelope
           cypherQuery: data.cypherQuery || m?.metadata?.cypherQuery,
           executionTime: data.executionTime,
           dataCount: typeof data.dataCount === 'number' ? data.dataCount : m?.metadata?.dataCount
-        };
-        setMessages(prev => [...prev, botMessage]);
-      } else {
-        // Legacy text-only path
-        const botMessage = {
-          id: Date.now() + 1,
-          text: data.success ? data.response : data.error || 'Désolé, une erreur est survenue.',
-          sender: 'bot',
-          timestamp: new Date().toLocaleTimeString('fr-FR', { 
-            hour: '2-digit', 
-            minute: '2-digit'
-          }),
-          cypherQuery: data.cypherQuery,
-          executionTime: data.executionTime,
-          dataCount: data.data ? data.data.length : 0
         };
         setMessages(prev => [...prev, botMessage]);
       }
@@ -233,10 +206,7 @@ function App() {
         id: Date.now() + 1,
         text: 'Désolé, je ne peux pas me connecter au serveur en ce moment. Veuillez réessayer plus tard.',
         sender: 'bot',
-        timestamp: new Date().toLocaleTimeString('fr-FR', { 
-          hour: '2-digit', 
-          minute: '2-digit'
-        })
+        timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
