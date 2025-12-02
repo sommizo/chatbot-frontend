@@ -3,6 +3,7 @@ import './App.css';
 import { ChatHeader, MessageList, MessageInput } from './components';
 import Login from './components/Login';
 import authService from './services/authService';
+import { initHandoffLogin } from './auth/handoff';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,9 +19,21 @@ function App() {
   // Single conversation state
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Check authentication on app load
+  // Check authentication on app load (handles handoff first if code present)
   useEffect(() => {
-    checkAuthentication();
+    (async () => {
+      // First, try handoff login if URL contains a code
+      const handoff = await initHandoffLogin(authService.getApiBaseUrl());
+      if (handoff && handoff.success) {
+        authService.setHandoffSession(handoff.user);
+        setIsAuthenticated(true);
+        await loadConversationHistory();
+        setIsCheckingAuth(false);
+        return;
+      }
+      // Fallback to existing auth check (JWT)
+      checkAuthentication();
+    })();
   }, []);
 
   // Generate a unique session ID
@@ -48,12 +61,15 @@ function App() {
       const token = authService.getToken();
       const userId = authService.getUserId();
       console.log('[DEBUG_LOG] Loading conversation history - userId:', userId);
+      const historyHeaders = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        historyHeaders['Authorization'] = `Bearer ${token}`;
+      }
       const response = await fetch(`${apiBaseUrl}/api/chat/history/${userId}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: historyHeaders,
       });
 
       if (!response.ok) {
@@ -150,19 +166,23 @@ function App() {
     setIsLoading(true);
 
     try {
-      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
+      const apiBaseUrl = authService.getApiBaseUrl() || process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080';
       const chatEndpoint = process.env.REACT_APP_CHAT_ENDPOINT || '/api/chat/query';
       const apiUrl = `${apiBaseUrl}${chatEndpoint}`;
       
       const token = authService.getToken();
       const userId = authService.getUserId();
       console.log('[DEBUG_LOG] Sending message - userId:', userId);
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers,
+        credentials: authService.isHandoffAuthenticated() ? 'include' : 'same-origin',
         body: JSON.stringify({
           userMessage: inputMessage,
           sessionId: sessionId,

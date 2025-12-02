@@ -31,6 +31,9 @@ class AuthService {
   }
 
   async validateToken() {
+    // If authenticated via handoff session (server-managed), consider it valid
+    if (this.isHandoffAuthenticated()) return true;
+
     const token = this.getToken();
     if (!token) return false;
 
@@ -51,10 +54,34 @@ class AuthService {
     }
   }
 
+  setHandoffSession(user) {
+    try {
+      sessionStorage.setItem('handoffAuth', '1');
+      if (user) {
+        // Map user fields to existing usage in app
+        if (user.email || user.name) {
+          sessionStorage.setItem('username', user.email || user.name);
+        }
+        if (user.id) {
+          sessionStorage.setItem('userId', user.id);
+        }
+        sessionStorage.setItem('handoffUser', JSON.stringify(user));
+      }
+    } catch (e) {
+      // ignore storage errors
+    }
+  }
+
+  isHandoffAuthenticated() {
+    return sessionStorage.getItem('handoffAuth') === '1';
+  }
+
   logout() {
     sessionStorage.removeItem('authToken');
     sessionStorage.removeItem('username');
     sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('handoffAuth');
+    sessionStorage.removeItem('handoffUser');
   }
 
   getToken() {
@@ -70,7 +97,11 @@ class AuthService {
   }
 
   isAuthenticated() {
-    return !!this.getToken();
+    return !!this.getToken() || this.isHandoffAuthenticated();
+  }
+
+  getApiBaseUrl() {
+    return API_BASE_URL;
   }
 }
 
